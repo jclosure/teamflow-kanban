@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TeamFlow Kanban</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>TeamFlow Kanban</h1>
+    <p>Collective progress with humans + agents</p>
+  </header>
+
+  <section class="toolbar">
+    <div class="tabs">
+      <button id="tab_board" class="tab active">Board</button>
+      <button id="tab_metrics" class="tab">Metrics</button>
+    </div>
+    <input id="title" placeholder="New task title" />
+    <input id="desc" placeholder="Description (optional)" />
+    <select id="priority">
+      <option value="5">P1</option><option value="4">P2</option><option value="3" selected>P3</option><option value="2">P4</option><option value="1">P5</option>
+    </select>
+    <button id="add">Add Task</button>
+    <button id="export_tasks">Export</button>
+    <label class="import-label">Import <input id="import_tasks" type="file" accept="application/json" /></label>
+  </section>
+
+  <main>
+    <div id="board_view">
+      <div id="board"></div>
+    </div>
+    <div id="metrics_view" class="hidden">
+      <div class="metrics-grid">
+        <div class="metric-card"><h4>Tasks by Status</h4><canvas id="status_chart" width="640" height="220"></canvas></div>
+        <div class="metric-card"><h4>Agent WIP</h4><canvas id="agent_chart" width="640" height="220"></canvas></div>
+        <div class="metric-card"><h4>Throughput</h4><div id="throughput"></div></div>
+      </div>
+    </div>
+    <aside>
+      <h3>Agents</h3>
+      <div id="agents"></div>
+      <h3>Audit Trail</h3>
+      <div id="audit"></div>
+    </aside>
+  </main>
+
+  <div id="drawer" class="drawer hidden">
+    <div class="drawer-card">
+      <div class="drawer-head">
+        <h3 id="d_title">Task Details</h3>
+        <button id="d_close">✕</button>
+      </div>
+      <div class="drawer-body">
+        <label>Title <input id="d_task_title" /></label>
+        <label>Description <textarea id="d_task_desc" rows="5"></textarea></label>
+        <label>Status <select id="d_task_status"></select></label>
+        <label>Priority <select id="d_task_priority"><option value="5">P1</option><option value="4">P2</option><option value="3">P3</option><option value="2">P4</option><option value="1">P5</option></select></label>
+        <label>Assignee <select id="d_task_assignee"></select></label>
+        <label><input type="checkbox" id="d_task_autopick" /> Auto-pick eligible</label>
+      </div>
+      <div class="drawer-foot">
+        <button id="d_save">Save</button>
+      </div>
+      <div class="drawer-history">
+        <h4>History</h4>
+        <div id="d_history"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
