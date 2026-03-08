@@ -11,6 +11,7 @@ const DB_PATH = path.join(__dirname, 'db.json');
 const PORT = process.env.PORT || 4680;
 
 const STATUSES = ['backlog', 'todo', 'doing', 'review', 'done'];
+const DEMO_AUTOMATION = process.env.TEAMFLOW_DEMO_AUTOMATION === '1';
 
 function now() { return new Date().toISOString(); }
 function id(prefix = 'id') { return `${prefix}_${Math.random().toString(36).slice(2, 10)}`; }
@@ -18,18 +19,12 @@ function id(prefix = 'id') { return `${prefix}_${Math.random().toString(36).slic
 function seed() {
   const t = now();
   return {
-    tasks: [
-      { id: id('task'), title: 'Define MVP architecture', description: 'Set stack + deployment path', status: 'doing', priority: 5, assigneeId: null, createdAt: t, updatedAt: t, labels: ['mvp'], autoPick: true },
-      { id: id('task'), title: 'Design drag-drop board UX', description: 'Smooth and minimal interactions', status: 'todo', priority: 4, assigneeId: null, createdAt: t, updatedAt: t, labels: ['frontend'], autoPick: true },
-      { id: id('task'), title: 'Audit trail schema', description: 'Every state change traceable', status: 'backlog', priority: 4, assigneeId: null, createdAt: t, updatedAt: t, labels: ['backend'], autoPick: true }
-    ],
+    tasks: [],
     agents: [
-      { id: id('agent'), name: 'Bubba', role: 'AI Principal Engineer', type: 'ai', active: true, capacity: 2, wip: 0, lastHeartbeat: t },
-      { id: id('agent'), name: 'Builder-1', role: 'AI Implementer', type: 'ai', active: true, capacity: 2, wip: 0, lastHeartbeat: t },
-      { id: id('agent'), name: 'QA-Sentinel', role: 'AI QA', type: 'ai', active: true, capacity: 1, wip: 0, lastHeartbeat: t }
+      { id: id('agent'), name: 'Loop', role: 'OpenClaw Orchestrator', type: 'ai', active: true, capacity: 3, wip: 0, lastHeartbeat: t }
     ],
     audit: [
-      { id: id('audit'), at: t, actor: 'system', action: 'seed', entityType: 'workspace', entityId: 'default', summary: 'Initialized TeamFlow workspace' }
+      { id: id('audit'), at: t, actor: 'system', action: 'seed', entityType: 'workspace', entityId: 'default', summary: 'Initialized TeamFlow workspace (live mode)' }
     ]
   };
 }
@@ -130,7 +125,9 @@ function agentLoop() {
   broadcastState();
 }
 
-setInterval(agentLoop, 5000);
+if (DEMO_AUTOMATION) {
+  setInterval(agentLoop, 5000);
+}
 
 const app = express();
 const server = http.createServer(app);
