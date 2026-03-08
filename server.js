@@ -168,6 +168,7 @@ app.post('/api/import', (req, res) => {
         assigneeId: it.assigneeId ?? existing.assigneeId ?? null,
         labels: Array.isArray(it.labels) ? it.labels : existing.labels ?? [],
         autoPick: it.autoPick ?? existing.autoPick ?? true,
+        reviewComments: Array.isArray(it.reviewComments) ? it.reviewComments : existing.reviewComments ?? [],
         updatedAt: t
       });
       updated++;
@@ -182,6 +183,7 @@ app.post('/api/import', (req, res) => {
         assigneeId: it.assigneeId || null,
         labels: Array.isArray(it.labels) ? it.labels : [],
         autoPick: it.autoPick !== false,
+        reviewComments: Array.isArray(it.reviewComments) ? it.reviewComments : [],
         createdAt: it.createdAt || t,
         updatedAt: t
       });
@@ -213,7 +215,8 @@ app.post('/api/tasks', (req, res) => {
     createdAt: t,
     updatedAt: t,
     labels: Array.isArray(req.body.labels) ? req.body.labels : [],
-    autoPick: req.body.autoPick !== false
+    autoPick: req.body.autoPick !== false,
+    reviewComments: []
   };
   db.tasks.push(task);
   log('create', 'task', task.id, `Task created: ${task.title}`, req.body.actor || 'user');
@@ -234,9 +237,64 @@ app.patch('/api/tasks/:id', (req, res) => {
   if (req.body.assigneeId !== undefined) task.assigneeId = req.body.assigneeId || null;
   if (req.body.autoPick !== undefined) task.autoPick = Boolean(req.body.autoPick);
   if (req.body.labels !== undefined) task.labels = Array.isArray(req.body.labels) ? req.body.labels : [];
+  if (req.body.reviewComments !== undefined) task.reviewComments = Array.isArray(req.body.reviewComments) ? req.body.reviewComments : task.reviewComments ?? [];
 
   task.updatedAt = now();
   log('update', 'task', task.id, `Task updated (${before.status} → ${task.status})`, req.body.actor || 'user', { before, after: task });
+  recomputeWip();
+  persist();
+  broadcastState();
+  res.json(task);
+});
+
+app.post('/api/tasks/:id/review', (req, res) => {
+  const task = taskById(req.params.id);
+  if (!task) return res.status(404).json({ error: 'not found' });
+
+  const decision = String(req.body?.decision || '').toLowerCase();
+  const comment = String(req.body?.comment || '').trim();
+  const actor = req.body?.actor || 'user';
+
+  if (!['approve', 'reject'].includes(decision)) {
+    return res.status(400).json({ error: 'decision must be approve or reject' });
+  }
+
+  if (decision === 'reject' && !comment) {
+    return res.status(400).json({ error: 'comment required for reject' });
+  }
+
+  if (task.status !== 'review') {
+    return res.status(400).json({ error: 'task must be in review' });
+  }
+
+  const previousStatus = task.status;
+  task.reviewComments = Array.isArray(task.reviewComments) ? task.reviewComments : [];
+
+  if (comment) {
+    task.reviewComments.unshift({
+      id: id('review'),
+      at: now(),
+      actor,
+      decision,
+      comment
+    });
+    task.reviewComments = task.reviewComments.slice(0, 50);
+  }
+
+  task.status = decision === 'approve' ? 'done' : 'todo';
+  task.updatedAt = now();
+
+  const summary = decision === 'approve'
+    ? `Review approved (${previousStatus} → done)`
+    : `Review rejected (${previousStatus} → todo)${comment ? `: ${comment}` : ''}`;
+
+  log('review', 'task', task.id, summary, actor, {
+    decision,
+    comment,
+    previousStatus,
+    nextStatus: task.status
+  });
+
   recomputeWip();
   persist();
   broadcastState();

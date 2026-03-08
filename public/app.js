@@ -41,6 +41,8 @@ function colTitle(s){ return s[0].toUpperCase()+s.slice(1); }
 
 function taskCard(task){
   const assignee = state.agents.find(a => a.id === task.assigneeId);
+  const latestReview = Array.isArray(task.reviewComments) ? task.reviewComments[0] : null;
+  const showReviewActions = task.status === 'review';
   const el = document.createElement('div');
   el.className = 'task';
   el.draggable = true;
@@ -49,6 +51,7 @@ function taskCard(task){
     <div class="row"><strong>${escapeHtml(task.title)}</strong><button data-del="${task.id}">✕</button></div>
     <div class="meta">P${6-task.priority} · ${assignee ? escapeHtml(assignee.name) : 'Unassigned'} · ${task.autoPick ? 'Auto' : 'Manual'}</div>
     <div class="meta">${escapeHtml(task.description||'')}</div>
+    ${latestReview && latestReview.decision === 'reject' ? `<div class="review-note"><strong>Needs changes:</strong> ${escapeHtml(latestReview.comment || '')}</div>` : ''}
     <div class="row" style="margin-top:6px">
       <select data-assign="${task.id}">
         <option value="">Assign…</option>
@@ -56,13 +59,37 @@ function taskCard(task){
       </select>
       <span class="tag">${task.status}</span>
     </div>
+    ${showReviewActions ? `<div class="review-actions"><button data-approve="${task.id}" class="btn-approve">Approve</button><button data-reject="${task.id}" class="btn-reject">Reject</button></div>` : ''}
   `;
   el.addEventListener('dragstart', e => e.dataTransfer.setData('text/task', task.id));
-  el.querySelector('button').onclick = async (e) => { e.stopPropagation(); await api(`/api/tasks/${task.id}`, {method:'DELETE', body: JSON.stringify({actor:'user'})}); };
-  el.querySelector('select').onchange = async (e) => {
+  el.querySelector('button[data-del]').onclick = async (e) => { e.stopPropagation(); await api(`/api/tasks/${task.id}`, {method:'DELETE', body: JSON.stringify({actor:'user'})}); };
+  el.querySelector('select[data-assign]').onchange = async (e) => {
     const assigneeId = e.target.value || null;
     await api(`/api/tasks/${task.id}`, {method:'PATCH', body: JSON.stringify({assigneeId, actor:'user'})});
   };
+
+  const approveBtn = el.querySelector('button[data-approve]');
+  if (approveBtn) {
+    approveBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await api(`/api/tasks/${task.id}/review`, {method:'POST', body: JSON.stringify({decision:'approve', actor:'user'})});
+    };
+  }
+
+  const rejectBtn = el.querySelector('button[data-reject]');
+  if (rejectBtn) {
+    rejectBtn.onclick = async (e) => {
+      e.stopPropagation();
+      const comment = prompt('Why is this not approved? This comment will be attached and sent back to TODO.');
+      if (comment === null) return;
+      if (!comment.trim()) {
+        alert('Rejection comment is required.');
+        return;
+      }
+      await api(`/api/tasks/${task.id}/review`, {method:'POST', body: JSON.stringify({decision:'reject', comment: comment.trim(), actor:'user'})});
+    };
+  }
+
   el.ondblclick = () => openDrawer(task.id);
   return el;
 }
@@ -154,7 +181,11 @@ async function openDrawer(taskId){
   dAutoPick.checked = !!task.autoPick;
   dAssignee.innerHTML = `<option value="">Unassigned</option>` + state.agents.map(a=>`<option value="${a.id}" ${a.id===task.assigneeId?'selected':''}>${escapeHtml(a.name)}</option>`).join('');
   const history = await api(`/api/tasks/${taskId}/history`);
-  dHistory.innerHTML = history.map(h => `<div class="history-item"><strong>${escapeHtml(h.action)}</strong> · ${escapeHtml(h.summary)}<br><span style="color:#8da0e8">${new Date(h.at).toLocaleString()}</span></div>`).join('');
+  const reviewHistory = Array.isArray(task.reviewComments)
+    ? task.reviewComments.map(r => ({ action: `review_${r.decision}`, summary: r.comment || '(no comment)', at: r.at, actor: r.actor }))
+    : [];
+  const merged = [...reviewHistory, ...history].sort((a,b) => new Date(b.at) - new Date(a.at));
+  dHistory.innerHTML = merged.map(h => `<div class="history-item"><strong>${escapeHtml(h.action)}</strong> · ${escapeHtml(h.summary)}<br><span style="color:#8da0e8">${new Date(h.at).toLocaleString()}</span></div>`).join('');
   drawer.classList.remove('hidden');
 }
 function closeDrawer(){ selectedTaskId = null; drawer.classList.add('hidden'); }

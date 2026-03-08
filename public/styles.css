@@ -25,6 +25,10 @@ main{display:grid;grid-template-columns:1fr 320px;gap:12px;padding:12px}
 .task .row{display:flex;justify-content:space-between;gap:6px;align-items:center}
 .task button{background:#2c376f;color:#dfe6ff;border:none;border-radius:6px;padding:2px 6px;cursor:pointer}
 .tag{font-size:11px;padding:2px 6px;border-radius:999px;background:#2a3467;color:#dbe4ff}
+.review-note{margin-top:6px;padding:6px 8px;border:1px solid #805a2a;background:#33240f;border-radius:8px;color:#ffd8a6;font-size:12px}
+.review-actions{display:flex;gap:6px;margin-top:8px}
+.review-actions .btn-approve{background:#2b7a57}
+.review-actions .btn-reject{background:#8a2f3e}
 .drop{outline:2px dashed #6d84ff}
 aside{background:#12172f;border:1px solid #2d386f;border-radius:12px;padding:10px;max-height:78vh;overflow:auto}
 .agent{padding:8px;border:1px solid #334082;border-radius:8px;margin-bottom:8px;background:#171f3d}
